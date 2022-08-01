@@ -1,11 +1,15 @@
 use crate::db::establish_connection;
-use crate::db::users::{check_login, insert_user as DBinsert_user, show_users as DBshow_users};
+use crate::db::users::{
+    check_login, get_user_id as DBget_user_id, insert_user as DBinsert_user,
+    show_users as DBshow_users,
+};
 use actix_files::NamedFile;
-use actix_web::cookie::Cookie;
+use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{web, HttpRequest, HttpResponse, Result};
-use log::info;
+use actix_web::{error, web, HttpRequest, HttpResponse, Result};
+use log::{error, info};
 use serde::Deserialize;
+use serde::Serialize;
 use std::path::PathBuf;
 
 //use crate::schema::user::password;
@@ -32,7 +36,9 @@ pub async fn login(_req: HttpRequest) -> Result<NamedFile> {
     Ok(NamedFile::open(path)?)
 }
 
-pub async fn login_form(form: web::Form<Login>) -> HttpResponse {
+pub async fn login_form(session: Session, form: web::Form<Login>) -> HttpResponse {
+    let c: Option<String> = session.get::<String>("user_id").unwrap();
+
     let name = form.username.to_string();
     let pwd = form.password.to_string();
     info!(
@@ -44,14 +50,21 @@ pub async fn login_form(form: web::Form<Login>) -> HttpResponse {
 
     let result = check_login(connection, &name, &pwd);
     if result == false {
-        return HttpResponse::Ok().body(format!("username: {}", &name));
+        return HttpResponse::Ok().body(format!("username: {} counter {:?}", &name, c));
         //HttpResponse::Ok()
         //.content_type(ContentType::html())
         //.body(include_str!("../../files/login.html"))
     } else {
+        match DBget_user_id(connection, &name, &pwd) {
+            Ok(id) => {
+                session.insert("user_id", &id);
+                session.insert("username", &name);
+                session.renew();
+            }
+            Err(_) => error!("User with name {:?} not found", &name),
+        }
         return HttpResponse::SeeOther()
-            .insert_header((LOCATION, "/"))
-            .cookie(Cookie::new("_flash", name.to_string()))
+            .insert_header((LOCATION, "/show_login"))
             .finish();
     }
 }
@@ -79,4 +92,40 @@ pub async fn show_users(_rew: HttpRequest) -> HttpResponse {
         ));
     }
     HttpResponse::Ok().body(format!("{:?}", response))
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct IndexResponse {
+    user_id: Option<String>,
+    counter: i32,
+}
+
+pub async fn login_custom(session: Session) -> HttpResponse {
+    let id = "5";
+    session.insert("user_id", &id);
+    session.renew();
+
+    //let counter: i32 = session
+    //.get::<i32>("counter")
+    //.unwrap_or(Some(0))
+    //.unwrap_or(0);
+
+    //Ok(HttpResponse::Ok().json(IndexResponse {
+    //user_id: Some(id.to_string()),
+    //counter,
+    //}))
+    HttpResponse::Ok().body(format!("user_id {:?} counter {:?}", id, id))
+}
+
+pub async fn show_login(session: Session) -> HttpResponse {
+    let username: String = session
+        .get::<String>("username")
+        .unwrap_or(Some("Sesson not found".to_string()))
+        .unwrap_or("Sesson not found".to_string());
+    let user_id: i32 = session
+        .get::<i32>("user_id")
+        .unwrap_or(Some(0))
+        .unwrap_or(0);
+
+    HttpResponse::Ok().body(format!("user_id {:?} username {:?}", user_id, username))
 }

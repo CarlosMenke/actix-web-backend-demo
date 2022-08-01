@@ -2,11 +2,11 @@
 extern crate diesel;
 extern crate dotenvy;
 
-use crate::configuration::Settings;
-use actix_session::storage::RedisSessionStore;
+use actix_session::{storage::RedisActorSessionStore, SessionMiddleware};
 use actix_web::cookie::Key;
-use hmac::{Hmac, Mac};
-use secrecy::{ExposeSecret, Secret};
+use actix_web::web::resource;
+use actix_web::{web, App, Error, HttpResponse, HttpServer};
+use futures::TryFutureExt;
 
 use std::env::set_var;
 
@@ -21,18 +21,31 @@ async fn main() -> std::io::Result<()> {
     set_var("RUST_LOG", "debug");
     env_logger::builder().format_timestamp(None).init();
 
-    //let secret_key = Key::from(hmac_secret.expose_secret().as_bytes());
-    //let message_store = CookieMessageStore::builder(secret_key.clone()).build();
-    //let secret_key = Key::from(hmac_secret.expose_secret().as_bytes());
+    use configuration::Application;
+    let settings = Application {
+        redis_uri: "127.0.0.1:6379".to_string(),
+    };
+    let private_key = Key::generate();
 
+    // TODO move config data to config struct
     use actix_web::{web, App, HttpServer};
-    HttpServer::new(|| {
+    use handlers::pages;
+    HttpServer::new(move || {
         App::new()
-            .route("/", web::get().to(handlers::pages::index))
-            .route("/login_form", web::post().to(handlers::pages::login_form))
-            .route("/login", web::get().to(handlers::pages::login))
-            .route("/process", web::post().to(handlers::pages::add_user))
-            .route("/show_users", web::get().to(handlers::pages::show_users))
+            .route("/", web::get().to(pages::index))
+            .service(resource("/login_form").route(web::post().to(pages::login_form)))
+            .service(resource("/login").route(web::get().to(pages::login)))
+            .service(resource("/login_custom").route(web::get().to(pages::login_custom)))
+            .service(resource("/show_login").route(web::get().to(pages::show_login)))
+            .route("/process", web::post().to(pages::add_user))
+            .route("/show_users", web::get().to(pages::show_users))
+            .wrap(
+                SessionMiddleware::builder(
+                    RedisActorSessionStore::new(settings.redis_uri.clone()),
+                    private_key.clone(),
+                )
+                .build(),
+            )
     })
     .bind("127.0.0.1:8080")
     .expect("Can not bind to 127.0.0.1:8080")
