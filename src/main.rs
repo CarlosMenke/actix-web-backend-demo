@@ -2,6 +2,7 @@
 extern crate diesel;
 extern crate dotenvy;
 
+use actix_identity::IdentityMiddleware;
 use actix_session::{storage::RedisActorSessionStore, SessionMiddleware};
 use actix_web::cookie::Key;
 use actix_web::web::resource;
@@ -10,6 +11,7 @@ use diesel::{r2d2, r2d2::ConnectionManager, PgConnection};
 
 use dotenvy::dotenv;
 use std::env::set_var;
+use time::Duration;
 
 mod configuration;
 mod db;
@@ -25,6 +27,7 @@ async fn main() -> std::io::Result<()> {
     use configuration::Application;
     let settings = Application {
         redis_uri: "127.0.0.1:6379".to_string(),
+        domain: env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string()),
     };
     let private_key = Key::generate();
 
@@ -43,13 +46,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
-            .route("/", web::get().to(pages::index))
-            .service(resource("/login_form").route(web::post().to(pages::login_form)))
-            .service(resource("/login").route(web::get().to(pages::login)))
-            .service(resource("/login_custom").route(web::get().to(pages::login_custom)))
-            .service(resource("/show_login").route(web::get().to(pages::show_login)))
-            .route("/process", web::post().to(pages::add_user))
-            .route("/show_users", web::get().to(pages::show_users))
+            .wrap(IdentityMiddleware::default())
             .wrap(
                 SessionMiddleware::builder(
                     RedisActorSessionStore::new(settings.redis_uri.clone()),
@@ -57,6 +54,18 @@ async fn main() -> std::io::Result<()> {
                 )
                 .build(),
             )
+            .service(
+                resource("/")
+                    .route(web::get().to(pages::index))
+                    .route(web::post().to(pages::add_user)),
+            )
+            .service(
+                resource("/login")
+                    .route(web::get().to(pages::login))
+                    .route(web::post().to(pages::login_form)),
+            )
+            .service(resource("/show_login").route(web::get().to(pages::show_login)))
+            .route("/show_users", web::get().to(pages::show_users))
     })
     .bind("127.0.0.1:8080")
     .expect("Can not bind to 127.0.0.1:8080")

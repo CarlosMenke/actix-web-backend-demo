@@ -14,25 +14,21 @@ pub fn show_users(conn: &mut PgConnection) -> Vec<User> {
     return results;
 }
 
-pub fn get_user_id(
-    conn: &mut PgConnection,
-    _username: &str,
-    _password: &str,
-) -> Result<i32, String> {
+pub fn get_user(conn: &mut PgConnection, _username: &str, _password: &str) -> Result<User, String> {
     debug!(
         "Selecting User with username: {:?} password:{:?}",
         _username, _password
     );
 
-    let results = users
+    let mut results = users
         .filter(username.eq(_username))
         .limit(1)
         .load::<User>(conn)
         .expect("Error loading users");
 
     debug!("Query get_user_id {} match:", results.len());
-    for user in &results {
-        return Ok(user.id);
+    for user in results.pop() {
+        return Ok(user);
     }
     return Err("UserNotFound".to_string());
 }

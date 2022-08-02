@@ -1,13 +1,12 @@
-use crate::db::establish_connection;
 use crate::db::users::{
-    check_login, get_user_id as DBget_user_id, insert_user as DBinsert_user,
-    show_users as DBshow_users,
+    check_login, get_user as DBget_user, insert_user as DBinsert_user, show_users as DBshow_users,
 };
 use crate::models::Pool;
 use actix_files::NamedFile;
+use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{error, web, HttpRequest, HttpResponse, Result};
+use actix_web::{web, Error, HttpMessage, HttpRequest, HttpResponse, Result};
 use diesel::PgConnection;
 use log::{error, info};
 use serde::Deserialize;
@@ -39,11 +38,13 @@ pub async fn login(_req: HttpRequest) -> Result<NamedFile> {
 }
 
 pub async fn login_form(
-    pool: web::Data<Pool>,
-    session: Session,
+    req: HttpRequest,
     form: web::Form<Login>,
+    pool: web::Data<Pool>,
+    id: Option<Identity>,
+    session: Session,
 ) -> HttpResponse {
-    let c: Option<String> = session.get::<String>("user_id").unwrap();
+    //let c: Option<String> = session.get::<String>("user_id").unwrap();
 
     let name = form.username.to_string();
     let pwd = form.password.to_string();
@@ -56,22 +57,28 @@ pub async fn login_form(
 
     let result = check_login(connection, &name, &pwd);
     if result == false {
-        return HttpResponse::Ok().body(format!("username: {} counter {:?}", &name, c));
+        return HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd));
+        //HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd))
         //HttpResponse::Ok()
         //.content_type(ContentType::html())
         //.body(include_str!("../../files/login.html"))
     } else {
-        match DBget_user_id(connection, &name, &pwd) {
-            Ok(id) => {
-                session.insert("user_id", &id);
-                session.insert("username", &name);
+        match DBget_user(connection, &name, &pwd) {
+            Ok(user) => {
+                info!("logged in");
+                Identity::login(&req.extensions_mut(), user.id.to_string().into());
+                session.insert("user_id", &user.id);
+                session.insert("username", &user.username);
                 session.renew();
+                HttpResponse::SeeOther()
+                    .insert_header((LOCATION, "/show_login"))
+                    .finish()
             }
-            Err(_) => error!("User with name {:?} not found", &name),
+            Err(_) => {
+                error!("User with name {:?} not found", &name);
+                return HttpResponse::Ok().body(format!("Failed to find user."));
+            }
         }
-        return HttpResponse::SeeOther()
-            .insert_header((LOCATION, "/show_login"))
-            .finish();
     }
 }
 
@@ -106,24 +113,13 @@ pub struct IndexResponse {
     counter: i32,
 }
 
-pub async fn login_custom(session: Session) -> HttpResponse {
-    let id = "5";
-    session.insert("user_id", &id);
-    session.renew();
+pub async fn show_login(id: Option<Identity>, session: Session) -> HttpResponse {
+    let auth = if let Some(id) = id {
+        format!("logged in: {:?}", id.id())
+    } else {
+        String::from("not logged in")
+    };
 
-    //let counter: i32 = session
-    //.get::<i32>("counter")
-    //.unwrap_or(Some(0))
-    //.unwrap_or(0);
-
-    //Ok(HttpResponse::Ok().json(IndexResponse {
-    //user_id: Some(id.to_string()),
-    //counter,
-    //}))
-    HttpResponse::Ok().body(format!("user_id {:?} counter {:?}", id, id))
-}
-
-pub async fn show_login(session: Session) -> HttpResponse {
     let username: String = session
         .get::<String>("username")
         .unwrap_or(Some("Sesson not found".to_string()))
@@ -133,5 +129,7 @@ pub async fn show_login(session: Session) -> HttpResponse {
         .unwrap_or(Some(0))
         .unwrap_or(0);
 
-    HttpResponse::Ok().body(format!("user_id {:?} username {:?}", user_id, username))
-}
+    return HttpResponse::Ok().body(format!(
+        "user_id {:?}  id_id {:?} username {:?}",
+        user_id, auth, username
+    ));
