@@ -1,4 +1,7 @@
 use crate::schema::users;
+use diesel::{r2d2, r2d2::ConnectionManager, PgConnection};
+
+pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 #[derive(Insertable)]
 #[diesel(table_name = users)]

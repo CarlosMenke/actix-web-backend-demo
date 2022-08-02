@@ -3,10 +3,12 @@ use crate::db::users::{
     check_login, get_user_id as DBget_user_id, insert_user as DBinsert_user,
     show_users as DBshow_users,
 };
+use crate::models::Pool;
 use actix_files::NamedFile;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{error, web, HttpRequest, HttpResponse, Result};
+use diesel::PgConnection;
 use log::{error, info};
 use serde::Deserialize;
 use serde::Serialize;
@@ -36,7 +38,11 @@ pub async fn login(_req: HttpRequest) -> Result<NamedFile> {
     Ok(NamedFile::open(path)?)
 }
 
-pub async fn login_form(session: Session, form: web::Form<Login>) -> HttpResponse {
+pub async fn login_form(
+    pool: web::Data<Pool>,
+    session: Session,
+    form: web::Form<Login>,
+) -> HttpResponse {
     let c: Option<String> = session.get::<String>("user_id").unwrap();
 
     let name = form.username.to_string();
@@ -46,7 +52,7 @@ pub async fn login_form(session: Session, form: web::Form<Login>) -> HttpRespons
         name, pwd
     );
 
-    let connection = &mut establish_connection();
+    let connection: &mut PgConnection = &mut pool.get().unwrap();
 
     let result = check_login(connection, &name, &pwd);
     if result == false {
@@ -69,8 +75,8 @@ pub async fn login_form(session: Session, form: web::Form<Login>) -> HttpRespons
     }
 }
 
-pub async fn add_user(info: web::Form<NewUser>) -> HttpResponse {
-    let connection = &mut establish_connection();
+pub async fn add_user(pool: web::Data<Pool>, info: web::Form<NewUser>) -> HttpResponse {
+    let connection: &mut PgConnection = &mut pool.get().unwrap();
 
     let name = info.username.to_string();
     let pwd = info.password.to_string();
@@ -79,8 +85,8 @@ pub async fn add_user(info: web::Form<NewUser>) -> HttpResponse {
     HttpResponse::Ok().body(format!("username: {}", name))
 }
 
-pub async fn show_users(_rew: HttpRequest) -> HttpResponse {
-    let connection = &mut establish_connection();
+pub async fn show_users(pool: web::Data<Pool>, _rew: HttpRequest) -> HttpResponse {
+    let connection: &mut PgConnection = &mut pool.get().unwrap();
 
     let result = DBshow_users(connection);
     let mut response = String::new();

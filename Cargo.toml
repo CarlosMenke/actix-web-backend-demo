@@ -9,7 +9,7 @@ edition = "2021"
 actix-web = "4"
 actix-files = "*"
 actix-rt = "*"
-diesel = { version = "2.0.0-rc.0", features = ["postgres"] }
+diesel = { version = "2.0.0-rc.0", features = ["postgres", "r2d2"] }
 dotenvy = "0.15.0"
 futures = "0.3"
 serde = { version = "1.0", features = ["derive"] }
