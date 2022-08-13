@@ -15,6 +15,7 @@ use time::Duration;
 
 mod configuration;
 mod db;
+mod errors;
 mod handlers;
 mod models;
 mod schema;
@@ -65,6 +66,7 @@ async fn main() -> std::io::Result<()> {
                     .route(web::post().to(pages::login_form)),
             )
             .service(resource("/show_login").route(web::get().to(pages::show_login)))
+            .service(resource("/logout").route(web::get().to(pages::logout)))
             .route("/show_users", web::get().to(pages::show_users))
     })
     .bind("127.0.0.1:8080")

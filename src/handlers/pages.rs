@@ -4,14 +4,16 @@ use crate::db::users::{
 use crate::models::Pool;
 use actix_files::NamedFile;
 use actix_identity::Identity;
-use actix_session::Session;
+use actix_session::{Session, SessionGetError};
 use actix_web::http::header::LOCATION;
 use actix_web::{web, Error, HttpMessage, HttpRequest, HttpResponse, Result};
 use diesel::PgConnection;
-use log::{error, info};
+use log::{debug, error, info};
 use serde::Deserialize;
 use serde::Serialize;
 use std::path::PathBuf;
+
+use crate::errors::ServiceError;
 
 //use crate::schema::user::password;
 
@@ -41,7 +43,7 @@ pub async fn login_form(
     req: HttpRequest,
     form: web::Form<Login>,
     pool: web::Data<Pool>,
-    id: Option<Identity>,
+    //id: Option<Identity>,
     session: Session,
 ) -> HttpResponse {
     //let c: Option<String> = session.get::<String>("user_id").unwrap();
@@ -67,7 +69,6 @@ pub async fn login_form(
             Ok(user) => {
                 info!("logged in");
                 Identity::login(&req.extensions_mut(), user.id.to_string().into());
-                session.insert("user_id", &user.id);
                 session.insert("username", &user.username);
                 session.renew();
                 HttpResponse::SeeOther()
@@ -107,29 +108,34 @@ pub async fn show_users(pool: web::Data<Pool>, _rew: HttpRequest) -> HttpRespons
     HttpResponse::Ok().body(format!("{:?}", response))
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct IndexResponse {
-    user_id: Option<String>,
-    counter: i32,
-}
-
-pub async fn show_login(id: Option<Identity>, session: Session) -> HttpResponse {
-    let auth = if let Some(id) = id {
-        format!("logged in: {:?}", id.id())
+pub async fn show_login(
+    id_option: Option<Identity>,
+    session: Session,
+) -> Result<HttpResponse, ServiceError> {
+    let id = if let Some(id_option) = id_option {
+        format!("{:?}", id_option.id())
     } else {
-        String::from("not logged in")
+        return Err(ServiceError::Unauthorized);
     };
 
-    let username: String = session
-        .get::<String>("username")
-        .unwrap_or(Some("Sesson not found".to_string()))
-        .unwrap_or("Sesson not found".to_string());
-    let user_id: i32 = session
-        .get::<i32>("user_id")
-        .unwrap_or(Some(0))
-        .unwrap_or(0);
+    let username = match session.get::<String>("username") {
+        Ok(name) => name,
+        Err(SessionGetError) => return Err(ServiceError::InternalServerError),
+    };
 
-    return HttpResponse::Ok().body(format!(
-        "user_id {:?}  id_id {:?} username {:?}",
-        user_id, auth, username
-    ));
+    let name = if let Some(username) = username {
+        format!("{:?}", username)
+    } else {
+        return Err(ServiceError::Unauthorized);
+    };
+
+    Ok(HttpResponse::Ok().body(format!("user_id {:?} username {:?}", id, name)))
+}
+
+pub async fn logout(id: Identity) -> HttpResponse {
+    debug!("Logout");
+    let user = id.id().unwrap();
+    id.logout();
+    let body = format!("<h1>logged out ID {user}</h1>");
+    HttpResponse::Ok().body(body)
+}
