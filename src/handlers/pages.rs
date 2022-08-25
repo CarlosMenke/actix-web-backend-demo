@@ -5,12 +5,12 @@ use crate::models::Pool;
 use actix_files::NamedFile;
 use actix_identity::Identity;
 use actix_session::{Session, SessionGetError};
+use actix_web::dev::Service;
 use actix_web::http::header::LOCATION;
 use actix_web::{web, Error, HttpMessage, HttpRequest, HttpResponse, Result};
 use diesel::PgConnection;
 use log::{debug, error, info};
 use serde::Deserialize;
-use serde::Serialize;
 use std::path::PathBuf;
 
 use crate::errors::ServiceError;
@@ -50,6 +50,7 @@ pub async fn login_form(
 
     let name = form.username.to_string();
     let pwd = form.password.to_string();
+
     info!(
         "Login Attempt: \t\t\tUsr: {:?}\t\tPassword: {:?}",
         name, pwd
@@ -57,7 +58,12 @@ pub async fn login_form(
 
     let connection: &mut PgConnection = &mut pool.get().unwrap();
 
-    let result = check_login(connection, &name, &pwd);
+    let result = match check_login(connection, &name, &pwd) {
+        Ok(r) => r,
+        Err(_) => {
+            return HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd))
+        }
+    };
     if result == false {
         return HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd));
         //HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd))
@@ -83,14 +89,17 @@ pub async fn login_form(
     }
 }
 
-pub async fn add_user(pool: web::Data<Pool>, info: web::Form<NewUser>) -> HttpResponse {
+pub async fn add_user(
+    pool: web::Data<Pool>,
+    info: web::Form<NewUser>,
+) -> Result<HttpResponse, ServiceError> {
     let connection: &mut PgConnection = &mut pool.get().unwrap();
 
     let name = info.username.to_string();
     let pwd = info.password.to_string();
 
-    DBinsert_user(connection, &name, &pwd);
-    HttpResponse::Ok().body(format!("username: {}", name))
+    DBinsert_user(connection, &name, &pwd)?;
+    Ok(HttpResponse::Ok().body(format!("username: {}", name)))
 }
 
 pub async fn show_users(pool: web::Data<Pool>, _rew: HttpRequest) -> HttpResponse {
@@ -105,7 +114,7 @@ pub async fn show_users(pool: web::Data<Pool>, _rew: HttpRequest) -> HttpRespons
             user.id, user.username, user.password,
         ));
     }
-    HttpResponse::Ok().body(format!("{:?}", response))
+    HttpResponse::Ok().json(format!("{:?}", response))
 }
 
 pub async fn show_login(
@@ -120,7 +129,11 @@ pub async fn show_login(
 
     let username = match session.get::<String>("username") {
         Ok(name) => name,
-        Err(SessionGetError) => return Err(ServiceError::InternalServerError),
+        Err(SessionGetError) => {
+            return Err(ServiceError::InternalServerError(
+                "Session not found".to_string(),
+            ))
+        }
     };
 
     let name = if let Some(username) = username {

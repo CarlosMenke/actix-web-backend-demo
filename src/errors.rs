@@ -1,4 +1,5 @@
 use actix_web::{error::ResponseError, HttpResponse};
+use argon2::password_hash::Error as ArgonError;
 use derive_more::Display;
 use diesel::result::{DatabaseErrorKind, Error as DBError};
 
@@ -39,6 +40,14 @@ impl From<DBError> for ServiceError {
                 ServiceError::InternalServerError("DBError from diesel".to_string())
             }
             _ => ServiceError::InternalServerError("DBError from diesel".to_string()),
+        }
+    }
+}
+
+impl From<ArgonError> for ServiceError {
+    fn from(error: ArgonError) -> ServiceError {
+        match error {
+            _ => ServiceError::InternalServerError("ArgonError from Argon".to_string()),
         }
     }
 }

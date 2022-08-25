@@ -11,7 +11,6 @@ use diesel::{r2d2, r2d2::ConnectionManager, PgConnection};
 
 use dotenvy::dotenv;
 use std::env::set_var;
-use time::Duration;
 
 mod configuration;
 mod db;
@@ -19,6 +18,7 @@ mod errors;
 mod handlers;
 mod models;
 mod schema;
+mod utils;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
