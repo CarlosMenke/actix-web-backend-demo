@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate diesel;
 extern crate dotenvy;
+extern crate serde;
 
 use actix_identity::IdentityMiddleware;
 use actix_session::{storage::RedisActorSessionStore, SessionMiddleware};
@@ -67,10 +68,10 @@ async fn main() -> std::io::Result<()> {
             )
             .service(resource("/show_login").route(web::get().to(pages::show_login)))
             .service(resource("/logout").route(web::get().to(pages::logout)))
-            .route("/show_users", web::get().to(pages::show_users))
+            .route("/show_users.json", web::get().to(pages::show_users))
     })
-    .bind("127.0.0.1:8080")
-    .expect("Can not bind to 127.0.0.1:8080")
+    .bind("127.0.0.1:8084")
+    .expect("Can not bind to 127.0.0.1:8084")
     .run()
     .await
 }

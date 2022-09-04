@@ -1,5 +1,6 @@
 use crate::schema::users;
 use diesel::{r2d2, r2d2::ConnectionManager, PgConnection};
+use serde::Serialize;
 
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
@@ -10,7 +11,7 @@ pub struct NewUser<'a> {
     pub password: &'a str,
 }
 
-#[derive(Queryable, Debug, AsChangeset)]
+#[derive(Queryable, Debug, AsChangeset, Serialize)]
 pub struct User {
     pub id: i32,
     pub username: String,

@@ -4,10 +4,9 @@ use crate::db::users::{
 use crate::models::Pool;
 use actix_files::NamedFile;
 use actix_identity::Identity;
-use actix_session::{Session, SessionGetError};
-use actix_web::dev::Service;
+use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{web, Error, HttpMessage, HttpRequest, HttpResponse, Result};
+use actix_web::{get, web, Error, HttpMessage, HttpRequest, HttpResponse, Responder, Result};
 use diesel::PgConnection;
 use log::{debug, error, info};
 use serde::Deserialize;
@@ -102,19 +101,21 @@ pub async fn add_user(
     Ok(HttpResponse::Ok().body(format!("username: {}", name)))
 }
 
-pub async fn show_users(pool: web::Data<Pool>, _rew: HttpRequest) -> HttpResponse {
+//#[get("/a/{name}")]
+pub async fn show_users(
+    pool: web::Data<Pool>,
+    _rew: HttpRequest,
+) -> Result<impl Responder, ServiceError> {
     let connection: &mut PgConnection = &mut pool.get().unwrap();
 
     let result = DBshow_users(connection);
-    let mut response = String::new();
-
-    for user in result {
-        response.push_str(&format!(
-            "User id '{}' with Name '{}' and Pwd '{}'",
-            user.id, user.username, user.password,
-        ));
+    let result = DBget_user(connection, "Carlos", "jkl");
+    match result {
+        Ok(u) => Ok(web::Json(u)),
+        Err(_) => Err(ServiceError::InternalServerError(
+            "User not found".to_string(),
+        )),
     }
-    HttpResponse::Ok().json(format!("{:?}", response))
 }
 
 pub async fn show_login(
