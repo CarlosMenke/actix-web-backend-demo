@@ -1,4 +1,6 @@
+use actix_session::SessionInsertError;
 use actix_web::{error::ResponseError, HttpResponse};
+use anyhow;
 use argon2::password_hash::Error as ArgonError;
 use derive_more::Display;
 use diesel::result::{DatabaseErrorKind, Error as DBError};
@@ -59,6 +61,22 @@ impl From<SerdeJsonError> for ServiceError {
             _ => {
                 ServiceError::InternalServerError("Error for converting serde to json".to_string())
             }
+        }
+    }
+}
+
+impl From<anyhow::Error> for ServiceError {
+    fn from(error: anyhow::Error) -> ServiceError {
+        match error {
+            _ => ServiceError::InternalServerError("Anyhow Error".to_string()),
+        }
+    }
+}
+
+impl From<SessionInsertError> for ServiceError {
+    fn from(error: SessionInsertError) -> ServiceError {
+        match error {
+            _ => ServiceError::InternalServerError("Session inssert Error".to_string()),
         }
     }
 }

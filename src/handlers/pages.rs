@@ -29,12 +29,12 @@ pub struct Login {
 }
 
 pub async fn index(_req: HttpRequest) -> Result<NamedFile> {
-    let path: PathBuf = "./files/index.html".parse().unwrap();
+    let path: PathBuf = ".././files/index.html".parse().unwrap();
     Ok(NamedFile::open(path)?)
 }
 
 pub async fn login(_req: HttpRequest) -> Result<NamedFile> {
-    let path: PathBuf = "./files/login.html".parse().unwrap();
+    let path: PathBuf = ".././files/login.html".parse().unwrap();
     Ok(NamedFile::open(path)?)
 }
 
@@ -44,7 +44,7 @@ pub async fn login_form(
     pool: web::Data<Pool>,
     //id: Option<Identity>,
     session: Session,
-) -> HttpResponse {
+) -> Result<HttpResponse, ServiceError> {
     //let c: Option<String> = session.get::<String>("user_id").unwrap();
 
     let name = form.username.to_string();
@@ -59,13 +59,11 @@ pub async fn login_form(
 
     let result = match check_login(connection, &name, &pwd) {
         Ok(r) => r,
-        Err(_) => {
-            return HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd))
-        }
+        Err(_) => false,
     };
     if result == false {
-        return HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd));
-        //HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd))
+        //Ok(HttpResponse::Ok().body(format!("username: {} password {:?}", &name, pwd)))
+        Err(ServiceError::Unauthorized)
         //HttpResponse::Ok()
         //.content_type(ContentType::html())
         //.body(include_str!("../../files/login.html"))
@@ -73,16 +71,16 @@ pub async fn login_form(
         match DBget_user(connection, &name, &pwd) {
             Ok(user) => {
                 info!("logged in");
-                Identity::login(&req.extensions_mut(), user.id.to_string().into());
-                session.insert("username", &user.username);
+                Identity::login(&req.extensions_mut(), user.id.to_string().into())?;
+                session.insert("username", &user.username)?;
                 session.renew();
-                HttpResponse::SeeOther()
+                Ok(HttpResponse::SeeOther()
                     .insert_header((LOCATION, "/show_login"))
-                    .finish()
+                    .finish())
             }
             Err(_) => {
                 error!("User with name {:?} not found", &name);
-                return HttpResponse::Ok().body(format!("Failed to find user."));
+                Err(ServiceError::Unauthorized)
             }
         }
     }
@@ -113,7 +111,7 @@ pub async fn show_login(
 
     let username = match session.get::<String>("username") {
         Ok(name) => name,
-        Err(SessionGetError) => {
+        Err(_session_get_error) => {
             return Err(ServiceError::InternalServerError(
                 "Session not found".to_string(),
             ))

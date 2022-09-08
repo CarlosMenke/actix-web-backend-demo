@@ -73,6 +73,7 @@ async fn main() -> std::io::Result<()> {
             .service(resource("/show_login").route(web::get().to(pages::show_login)))
             .service(resource("/logout").route(web::get().to(pages::logout)))
             .route("/show_users.json", web::get().to(pages::show_users))
+            .route("/test_html", web::get().to(tests::test_html))
             .route("/test_post.json", web::post().to(tests::test_post))
             .route("/test_get.json", web::get().to(tests::test_get))
             .route("/test_get_vec.json", web::get().to(tests::test_get_vec))

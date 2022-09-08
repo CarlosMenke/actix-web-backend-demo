@@ -1,5 +1,6 @@
 use crate::db::users::get_user as DBget_user;
 use crate::models::Pool;
+use actix_files::NamedFile;
 use actix_web::web::Payload;
 use actix_web::{web, Result};
 use diesel::PgConnection;
@@ -7,11 +8,18 @@ use futures::StreamExt;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::path::PathBuf;
 
 use crate::errors::ServiceError;
 
 use crate::handlers::pages::NewUser;
 use crate::models::User;
+
+pub async fn test_html() -> Result<NamedFile> {
+    let path: PathBuf = ".././files/music_all.html".parse().unwrap();
+    debug!("test_html called");
+    Ok(NamedFile::open(path)?)
+}
 
 pub async fn test_get(
     pool: web::Data<Pool>,
@@ -59,13 +67,6 @@ pub struct SendMessageResponseBody {
 pub struct SendMessageResponseBodyVec {
     pub response: Vec<SendMessageResponseBody>,
 }
-// ------ ------
-//     Init
-// ------ ------
-
-// ------ ------
-//     Init
-// ------ ------
 
 const MAX_SIZE: usize = 262_144; // max payload size is 256k
 pub async fn test_post(
