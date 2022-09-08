@@ -6,7 +6,7 @@ use actix_files::NamedFile;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{get, web, Error, HttpMessage, HttpRequest, HttpResponse, Responder, Result};
+use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Result};
 use diesel::PgConnection;
 use log::{debug, error, info};
 use serde::Deserialize;
@@ -14,12 +14,12 @@ use std::path::PathBuf;
 
 use crate::errors::ServiceError;
 
-//use crate::schema::user::password;
+use crate::models::User;
 
 #[derive(Deserialize)]
 pub struct NewUser {
-    username: String,
-    password: String,
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Deserialize)]
@@ -101,23 +101,6 @@ pub async fn add_user(
     Ok(HttpResponse::Ok().body(format!("username: {}", name)))
 }
 
-//#[get("/a/{name}")]
-pub async fn show_users(
-    pool: web::Data<Pool>,
-    _rew: HttpRequest,
-) -> Result<impl Responder, ServiceError> {
-    let connection: &mut PgConnection = &mut pool.get().unwrap();
-
-    let result = DBshow_users(connection);
-    let result = DBget_user(connection, "Carlos", "jkl");
-    match result {
-        Ok(u) => Ok(web::Json(u)),
-        Err(_) => Err(ServiceError::InternalServerError(
-            "User not found".to_string(),
-        )),
-    }
-}
-
 pub async fn show_login(
     id_option: Option<Identity>,
     session: Session,
@@ -152,4 +135,11 @@ pub async fn logout(id: Identity) -> HttpResponse {
     id.logout();
     let body = format!("<h1>logged out ID {user}</h1>");
     HttpResponse::Ok().body(body)
+}
+
+pub async fn show_users(pool: web::Data<Pool>) -> web::Json<Vec<User>> {
+    let connection: &mut PgConnection = &mut pool.get().unwrap();
+
+    let result = DBshow_users(connection);
+    web::Json(result)
 }

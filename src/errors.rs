@@ -2,6 +2,7 @@ use actix_web::{error::ResponseError, HttpResponse};
 use argon2::password_hash::Error as ArgonError;
 use derive_more::Display;
 use diesel::result::{DatabaseErrorKind, Error as DBError};
+use serde_json::Error as SerdeJsonError;
 
 #[derive(Debug, Display)]
 pub enum ServiceError {
@@ -48,6 +49,16 @@ impl From<ArgonError> for ServiceError {
     fn from(error: ArgonError) -> ServiceError {
         match error {
             _ => ServiceError::InternalServerError("ArgonError from Argon".to_string()),
+        }
+    }
+}
+
+impl From<SerdeJsonError> for ServiceError {
+    fn from(error: SerdeJsonError) -> ServiceError {
+        match error {
+            _ => {
+                ServiceError::InternalServerError("Error for converting serde to json".to_string())
+            }
         }
     }
 }

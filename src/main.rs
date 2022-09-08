@@ -3,6 +3,7 @@ extern crate diesel;
 extern crate dotenvy;
 extern crate serde;
 
+use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{storage::RedisActorSessionStore, SessionMiddleware};
 use actix_web::cookie::Key;
@@ -44,10 +45,13 @@ async fn main() -> std::io::Result<()> {
 
     // TODO move config data to config struct
     use actix_web::{web, App, HttpServer};
-    use handlers::pages;
+    use handlers::{pages, tests};
     HttpServer::new(move || {
+        // TODO change to better custom target
+        let cors = Cors::permissive();
         App::new()
             .app_data(web::Data::new(pool.clone()))
+            .wrap(cors)
             .wrap(IdentityMiddleware::default())
             .wrap(
                 SessionMiddleware::builder(
@@ -69,6 +73,9 @@ async fn main() -> std::io::Result<()> {
             .service(resource("/show_login").route(web::get().to(pages::show_login)))
             .service(resource("/logout").route(web::get().to(pages::logout)))
             .route("/show_users.json", web::get().to(pages::show_users))
+            .route("/test_post.json", web::post().to(tests::test_post))
+            .route("/test_get.json", web::get().to(tests::test_get))
+            .route("/test_get_vec.json", web::get().to(tests::test_get_vec))
     })
     .bind("127.0.0.1:8084")
     .expect("Can not bind to 127.0.0.1:8084")

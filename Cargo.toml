@@ -11,11 +11,14 @@ actix-files = "*"
 actix-rt = "*"
 actix-session = { version = "*", features = [ "redis-rs-tls-session", "redis-actor-session"] }
 actix-identity = "0.5"
+actix-cors = "0.6.2"
  
 dotenvy = "0.15.0"
 diesel = { version = "2.0.0-rc.0", features = ["postgres", "r2d2"] }
  
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "*"
+futures = "*"
 log = { version = "^0.4.14", features = ["std"] }
 env_logger = "*"
 secrecy = { version = "0.8", features = ["serde"] }
