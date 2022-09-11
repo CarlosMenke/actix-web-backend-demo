@@ -29,12 +29,12 @@ pub struct Login {
 }
 
 pub async fn index(_req: HttpRequest) -> Result<NamedFile> {
-    let path: PathBuf = ".././files/index.html".parse().unwrap();
+    let path: PathBuf = "./files/index.html".parse().unwrap();
     Ok(NamedFile::open(path)?)
 }
 
 pub async fn login(_req: HttpRequest) -> Result<NamedFile> {
-    let path: PathBuf = ".././files/login.html".parse().unwrap();
+    let path: PathBuf = "./files/login.html".parse().unwrap();
     Ok(NamedFile::open(path)?)
 }
 
@@ -127,12 +127,25 @@ pub async fn show_login(
     Ok(HttpResponse::Ok().body(format!("user_id {:?} username {:?}", id, name)))
 }
 
-pub async fn logout(id: Identity) -> HttpResponse {
-    debug!("Logout");
-    let user = id.id().unwrap();
+pub async fn logout(
+    id_option: Option<Identity>,
+    session: Session,
+) -> Result<HttpResponse, ServiceError> {
+    let id = if let Some(id_option) = id_option {
+        id_option
+    } else {
+        return Err(ServiceError::Unauthorized);
+    };
+    let user = match id.id() {
+        Ok(i) => i,
+        Err(_) => return Err(ServiceError::Unauthorized),
+    };
+
     id.logout();
+    session.purge();
+
     let body = format!("<h1>logged out ID {user}</h1>");
-    HttpResponse::Ok().body(body)
+    Ok(HttpResponse::Ok().body(body))
 }
 
 pub async fn show_users(pool: web::Data<Pool>) -> web::Json<Vec<User>> {

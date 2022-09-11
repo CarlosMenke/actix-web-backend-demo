@@ -5,3 +5,8 @@ pub struct Application {
     pub redis_uri: String,
     pub domain: String,
 }
+
+pub enum CookieContentSecurity {
+    Private,
+    Signed,
+}

@@ -6,8 +6,7 @@ extern crate serde;
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{storage::RedisActorSessionStore, SessionMiddleware};
-use actix_web::cookie::Key;
-use actix_web::web::resource;
+use actix_web::{cookie::Key, web::resource};
 
 use diesel::{r2d2, r2d2::ConnectionManager, PgConnection};
 
@@ -24,6 +23,7 @@ mod utils;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    //TODO move to .env
     set_var("RUST_LOG", "debug");
     env_logger::builder().format_timestamp(None).init();
 
@@ -36,6 +36,8 @@ async fn main() -> std::io::Result<()> {
 
     use std::env;
     dotenv().ok();
+
+    // TODO move config data to config struct
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<PgConnection>::new(database_url);
 
@@ -43,12 +45,14 @@ async fn main() -> std::io::Result<()> {
         .build(manager)
         .expect("Failed to create pool.");
 
-    // TODO move config data to config struct
     use actix_web::{web, App, HttpServer};
     use handlers::{pages, tests};
     HttpServer::new(move || {
         // TODO change to better custom target
-        let cors = Cors::permissive();
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allowed_methods(vec!["GET", "POST"])
+            .disable_preflight();
         App::new()
             .app_data(web::Data::new(pool.clone()))
             .wrap(cors)
@@ -72,8 +76,8 @@ async fn main() -> std::io::Result<()> {
             )
             .service(resource("/show_login").route(web::get().to(pages::show_login)))
             .service(resource("/logout").route(web::get().to(pages::logout)))
-            .route("/show_users.json", web::get().to(pages::show_users))
-            .route("/test_html", web::get().to(tests::test_html))
+            .service(resource("/show_users.json").route(web::get().to(pages::show_users)))
+            .route("/test_html.html", web::get().to(tests::test_html))
             .route("/test_post.json", web::post().to(tests::test_post))
             .route("/test_get.json", web::get().to(tests::test_get))
             .route("/test_get_vec.json", web::get().to(tests::test_get_vec))

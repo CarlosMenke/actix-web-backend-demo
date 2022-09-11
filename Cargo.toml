@@ -25,6 +25,3 @@ anyhow = "*"
 secrecy = { version = "0.8", features = ["serde"] }
 derive_more = "0.99.5"
 argon2 = "0.4"
-rand_core = { version = "0.6", features = ["std"] }
- 
-time = "*"

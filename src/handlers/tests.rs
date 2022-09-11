@@ -8,17 +8,21 @@ use futures::StreamExt;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::path::PathBuf;
+use std::fs;
 
 use crate::errors::ServiceError;
 
 use crate::handlers::pages::NewUser;
 use crate::models::User;
 
-pub async fn test_html() -> Result<NamedFile> {
-    let path: PathBuf = ".././files/music_all.html".parse().unwrap();
-    debug!("test_html called");
-    Ok(NamedFile::open(path)?)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ResponseHtml {
+    pub html: String,
+}
+
+pub async fn test_html() -> Result<web::Json<ResponseHtml>, ServiceError> {
+    let file = fs::read_to_string("./files/music_all.html").expect("Unable to read file");
+    Ok(web::Json(ResponseHtml { html: file }))
 }
 
 pub async fn test_get(
@@ -93,7 +97,7 @@ pub async fn test_post(
     debug!("test_post method called! {:?}", obj);
     Ok(web::Json(SendMessageResponseBody {
         ordinal_number: 32,
-        text: "response".to_owned(),
+        text: obj.text,
     }))
 }
 
