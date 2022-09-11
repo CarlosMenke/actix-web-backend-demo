@@ -51,7 +51,7 @@ async fn main() -> std::io::Result<()> {
         // TODO change to better custom target
         let cors = Cors::default()
             .allow_any_origin()
-            .allowed_methods(vec!["GET", "POST"])
+            .allowed_methods(vec!["GET", "POST", "Json"])
             .disable_preflight();
         App::new()
             .app_data(web::Data::new(pool.clone()))
