@@ -12,7 +12,10 @@ actix-rt = "*"
 actix-session = { version = "*", features = [ "redis-rs-tls-session", "redis-actor-session"] }
 actix-identity = "0.5"
 actix-cors = "0.6.2"
- 
+actix-web-grants = "3.0.1"
+actix-web-httpauth = "0.8.0"
+jsonwebtoken = "8"
+
 dotenvy = "0.15.0"
 diesel = { version = "2.0.0-rc.0", features = ["postgres", "r2d2"] }
  
@@ -20,6 +23,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
 futures = "*"
 log = { version = "^0.4.14", features = ["std"] }
+chrono = "0.4.19"
 env_logger = "*"
 anyhow = "*"
 secrecy = { version = "0.8", features = ["serde"] }

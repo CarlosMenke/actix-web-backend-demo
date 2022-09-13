@@ -7,12 +7,14 @@ use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{storage::RedisActorSessionStore, SessionMiddleware};
 use actix_web::{cookie::Key, web::resource};
+use actix_web_httpauth::middleware::HttpAuthentication;
 
 use diesel::{r2d2, r2d2::ConnectionManager, PgConnection};
 
 use dotenvy::dotenv;
-use std::env::set_var;
+use std::env;
 
+mod auth;
 mod configuration;
 mod db;
 mod errors;
@@ -24,7 +26,7 @@ mod utils;
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     //TODO move to .env
-    set_var("RUST_LOG", "debug");
+    //set_var("RUST_LOG", "debug");
     env_logger::builder().format_timestamp(None).init();
 
     use configuration::Application;
@@ -34,7 +36,6 @@ async fn main() -> std::io::Result<()> {
     };
     let private_key = Key::generate();
 
-    use std::env;
     dotenv().ok();
 
     // TODO move config data to config struct
@@ -49,10 +50,13 @@ async fn main() -> std::io::Result<()> {
     use handlers::{pages, tests};
     HttpServer::new(move || {
         // TODO change to better custom target
-        let cors = Cors::default()
-            .allow_any_origin()
-            .allowed_methods(vec!["GET", "POST", "Json"])
-            .disable_preflight();
+        let cors = Cors::permissive();
+        //let cors = Cors::default()
+        //.allow_any_origin()
+        //.allowed_methods(vec!["GET", "POST", "Json"]);
+        //.disable_preflight();
+        use auth;
+        let auth = HttpAuthentication::bearer(auth::validator);
         App::new()
             .app_data(web::Data::new(pool.clone()))
             .wrap(cors)
@@ -77,10 +81,19 @@ async fn main() -> std::io::Result<()> {
             .service(resource("/show_login").route(web::get().to(pages::show_login)))
             .service(resource("/logout").route(web::get().to(pages::logout)))
             .service(resource("/show_users.json").route(web::get().to(pages::show_users)))
-            .route("/test_html.html", web::get().to(tests::test_html))
-            .route("/test_post.json", web::post().to(tests::test_post))
-            .route("/test_get.json", web::get().to(tests::test_get))
-            .route("/test_get_vec.json", web::get().to(tests::test_get_vec))
+            .service(
+                web::scope("/test")
+                    .route("html.html", web::get().to(tests::test_html))
+                    .route("post.json", web::post().to(tests::test_post))
+                    .route("get.json", web::get().to(tests::test_get))
+                    .route("get_vec.json", web::get().to(tests::test_get_vec))
+                    .route("login.json", web::post().to(tests::test_login))
+                    .service(
+                        web::scope("/auth")
+                            .wrap(auth)
+                            .route("admin", web::get().to(tests::test_admin_page)),
+                    ),
+            )
     })
     .bind("127.0.0.1:8084")
     .expect("Can not bind to 127.0.0.1:8084")

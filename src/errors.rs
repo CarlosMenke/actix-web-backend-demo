@@ -14,6 +14,7 @@ pub enum ServiceError {
     #[display(fmt = "BadRequest: {}", _0)]
     BadRequest(String),
 
+    //TODO map to actix unotharized
     #[display(fmt = "Unauthorized")]
     Unauthorized,
 }
