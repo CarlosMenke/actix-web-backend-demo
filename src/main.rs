@@ -25,18 +25,16 @@ mod utils;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-    //TODO move to .env
-    //set_var("RUST_LOG", "debug");
+    dotenv().ok();
     env_logger::builder().format_timestamp(None).init();
 
+    //TODO move to config
     use configuration::Application;
     let settings = Application {
-        redis_uri: "127.0.0.1:6379".to_string(),
+        redis_uri: env::var("REDIS_URL").expect("REDIS_URL must be set."),
         domain: env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string()),
     };
     let private_key = Key::generate();
-
-    dotenv().ok();
 
     // TODO move config data to config struct
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
