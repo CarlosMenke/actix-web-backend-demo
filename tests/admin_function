@@ -1,0 +1,12 @@
+#!/bin/sh
+
+TOKEN=$(curl --location --request POST 'http://127.0.0.1:8084/test/login.json' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+"username": "Lorem-Ipsum",
+"permissions": ["ROLE_ADMIN", "OP_GET_SECURED_INFO"]
+}')
+
+echo $TOKEN
+
+curl --location --request GET 'http://127.0.0.1:8084/test/auth/admin.json' --header "Authorization: Bearer $TOKEN"

@@ -49,8 +49,7 @@ pub struct UserPermissionsResponse {
 }
 
 //TODO implement enum or so with all role models, to restirct them
-const JWT_EXPIRATION_HOURS: i64 = 24;
-const SECRET: &str = "SECRET";
+use crate::configuration::Authorization;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -64,7 +63,7 @@ impl Claims {
         Self {
             username,
             permissions,
-            exp: (Utc::now() + Duration::hours(JWT_EXPIRATION_HOURS)).timestamp(),
+            exp: (utc::now() + duration::hours(jwt_expiration_hours)).timestamp(),
         }
     }
 }

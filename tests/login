@@ -1,0 +1,7 @@
+#!/bin/sh
+curl --location --request POST 'http://127.0.0.1:8084/test/login.json' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+"username": "Lorem-Ipsum",
+"permissions": ["ADMIN"]
+}'

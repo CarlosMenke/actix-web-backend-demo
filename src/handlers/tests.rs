@@ -138,8 +138,8 @@ pub async fn get_user(
 // ```
 pub async fn test_login(
     mut payload: Payload,
-    //) -> Result<web::Json<UserPermissionsResponse>, ServiceError> {
-) -> Result<String, ServiceError> {
+) -> Result<web::Json<UserPermissionsResponse>, ServiceError> {
+    //) -> Result<String, ServiceError> {
     debug!("test_login function called");
     let mut body = web::BytesMut::new();
     while let Some(chunk) = payload.next().await {
@@ -168,7 +168,7 @@ pub async fn test_login(
         permissions: pay.permissions,
         token: token_str.clone(),
     };
-    Ok(token_str)
+    Ok(web::Json(response))
 }
 
 #[has_any_role("ADMIN")]
