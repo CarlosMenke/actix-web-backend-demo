@@ -6,13 +6,15 @@ extern crate serde;
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{storage::RedisActorSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, web::resource};
+use actix_web::{cookie::Key, web, web::resource, App, HttpServer};
 use actix_web_httpauth::middleware::HttpAuthentication;
 
 use diesel::{r2d2, r2d2::ConnectionManager, PgConnection};
 
 use dotenvy::dotenv;
-use std::env;
+
+use configuration::Application;
+use handlers::{pages, tests};
 
 mod auth;
 mod configuration;
@@ -28,24 +30,14 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::builder().format_timestamp(None).init();
 
-    //TODO move to config
-    use configuration::Application;
-    let settings = Application {
-        redis_uri: env::var("REDIS_URL").expect("REDIS_URL must be set."),
-        domain: env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string()),
-    };
+    let settings = Application::default();
     let private_key = Key::generate();
 
-    // TODO move config data to config struct
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let manager = ConnectionManager::<PgConnection>::new(database_url);
-
+    let connection_manager = ConnectionManager::<PgConnection>::new(settings.database_url);
     let pool: models::Pool = r2d2::Pool::builder()
-        .build(manager)
+        .build(connection_manager)
         .expect("Failed to create pool.");
 
-    use actix_web::{web, App, HttpServer};
-    use handlers::{pages, tests};
     HttpServer::new(move || {
         // TODO change to better custom target
         let cors = Cors::permissive();
@@ -53,7 +45,6 @@ async fn main() -> std::io::Result<()> {
         //.allow_any_origin()
         //.allowed_methods(vec!["GET", "POST", "Json"]);
         //.disable_preflight();
-        use auth;
         let auth = HttpAuthentication::bearer(auth::validator);
         App::new()
             .app_data(web::Data::new(pool.clone()))
