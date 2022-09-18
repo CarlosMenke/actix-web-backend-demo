@@ -30,19 +30,13 @@ pub async fn test_html() -> Result<web::Json<ResponseHtml>, ServiceError> {
 pub async fn test_get(
     pool: web::Data<Pool>,
 ) -> Result<web::Json<SendMessageResponseBody>, ServiceError> {
-    let connection: &mut PgConnection = &mut pool.get().unwrap();
-
     Ok(web::Json(SendMessageResponseBody {
         ordinal_number: 42,
         text: "response".to_owned(),
     }))
 }
 
-pub async fn test_get_vec(
-    pool: web::Data<Pool>,
-) -> Result<web::Json<SendMessageResponseBodyVec>, ServiceError> {
-    let connection: &mut PgConnection = &mut pool.get().unwrap();
-
+pub async fn test_get_vec() -> Result<web::Json<SendMessageResponseBodyVec>, ServiceError> {
     let mut response_vec = Vec::new();
     response_vec.push(SendMessageResponseBody {
         ordinal_number: 42,
@@ -74,14 +68,12 @@ pub struct SendMessageResponseBodyVec {
     pub response: Vec<SendMessageResponseBody>,
 }
 
-const MAX_SIZE: usize = 262_144; // max payload size is 256k
 pub async fn test_post(
-    pool: web::Data<Pool>,
     body: web::Json<SendMessageRequestBody>,
 ) -> Result<web::Json<SendMessageResponseBody>, ServiceError> {
     debug!("test_post function is called with {:?}", &body);
     Ok(web::Json(SendMessageResponseBody {
-        ordinal_number: 32,
+        ordinal_number: 42,
         text: body.text.clone(),
     }))
 }

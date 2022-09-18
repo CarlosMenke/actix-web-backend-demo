@@ -35,7 +35,7 @@ pub async fn create_token(username: String, permissions: Vec<String>) -> Result<
     Ok(jwt)
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct UserPermissions {
     pub username: String,
     pub permissions: Vec<String>,

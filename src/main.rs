@@ -94,3 +94,98 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+
+// ------ Unit Tests ------
+#[cfg(test)]
+mod unit_tests {
+    use std::convert::TryInto;
+
+    use actix_web::{body::to_bytes, dev::Service, http, test, web, App};
+
+    use crate::auth::UserPermissions;
+
+    use super::*;
+    use dotenvy::dotenv;
+    use handlers::tests::SendMessageRequestBody;
+    use log::debug;
+
+    #[actix_web::test]
+    async fn test_post() {
+        let app = test::init_service(App::new().route("/", web::post().to(tests::test_post))).await;
+        let req = test::TestRequest::post()
+            .uri("/")
+            .set_json(&SendMessageRequestBody {
+                text: "my-name".to_owned(),
+            })
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        println!("{:?}", resp);
+        assert!(resp.status().is_success());
+
+        let body_bytes = to_bytes(resp.into_body()).await.unwrap();
+        assert_eq!(
+            body_bytes,
+            web::Bytes::from(r##"{"ordinal_number":42,"text":"my-name"}"##)
+        );
+    }
+
+    #[actix_web::test]
+    async fn test_get() {
+        // DEMO for POOL Env
+        dotenv().ok();
+        let settings = Application::default();
+        let connection_manager = ConnectionManager::<PgConnection>::new(settings.database_url);
+        let pool: models::Pool = r2d2::Pool::builder()
+            .build(connection_manager)
+            .expect("Failed to create pool.");
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(pool.clone()))
+                .route("/", web::get().to(tests::test_get)),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/").to_request();
+        let resp = test::call_service(&app, req).await;
+        println!("{:?}", resp);
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_web::test]
+    async fn test_get_vec() {
+        let app =
+            test::init_service(App::new().route("/", web::get().to(tests::test_get_vec))).await;
+        let req = test::TestRequest::get().uri("/").to_request();
+        let resp = test::call_service(&app, req).await;
+        println!("{:?}", resp);
+        assert!(resp.status().is_success());
+
+        let body_bytes = to_bytes(resp.into_body()).await.unwrap();
+        assert_eq!(
+            body_bytes,
+            web::Bytes::from(
+                r##"{"response":[{"ordinal_number":42,"text":"response"},{"ordinal_number":22,"text":"response2"}]}"##
+            )
+        );
+    }
+
+    #[actix_web::test]
+    async fn test_login() {
+        let app = test::init_service(
+            App::new()
+                .route("/", web::post().to(tests::test_login))
+                .route("/login", web::post().to(tests::test_admin_page)),
+        )
+        .await;
+        let req = test::TestRequest::post()
+            .uri("/")
+            .set_json(&UserPermissions {
+                username: "my-name".to_owned(),
+                permissions: Vec::from(["ADMIN_ROLE".to_string()]),
+            })
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        println!("{:?}", resp);
+        assert!(resp.status().is_success());
+    }
+}
