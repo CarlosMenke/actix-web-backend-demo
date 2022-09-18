@@ -6,7 +6,7 @@ extern crate serde;
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{storage::RedisActorSessionStore, SessionMiddleware};
-use actix_web::{cookie::Key, web, web::resource, App, HttpServer};
+use actix_web::{cookie::Key, http::header, web, web::resource, App, HttpServer};
 use actix_web_httpauth::middleware::HttpAuthentication;
 
 use diesel::{r2d2, r2d2::ConnectionManager, PgConnection};
@@ -40,11 +40,16 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         // TODO change to better custom target
-        let cors = Cors::permissive();
-        //let cors = Cors::default()
-        //.allow_any_origin()
-        //.allowed_methods(vec!["GET", "POST", "Json"]);
-        //.disable_preflight();
+        //let cors = Cors::permissive();
+        let cors = Cors::default()
+            //.allow_any_origin()
+            .allowed_origin("http://127.0.0.1:8080")
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+            .allowed_header(header::CONTENT_TYPE)
+            .supports_credentials()
+            .disable_preflight()
+            .max_age(3600);
         let auth = HttpAuthentication::bearer(auth::validator);
         App::new()
             .app_data(web::Data::new(pool.clone()))
