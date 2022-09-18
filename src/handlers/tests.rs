@@ -77,29 +77,12 @@ pub struct SendMessageResponseBodyVec {
 const MAX_SIZE: usize = 262_144; // max payload size is 256k
 pub async fn test_post(
     pool: web::Data<Pool>,
-    mut payload: Payload,
+    body: web::Json<SendMessageRequestBody>,
 ) -> Result<web::Json<SendMessageResponseBody>, ServiceError> {
-    let connection: &mut PgConnection = &mut pool.get().unwrap();
-
-    // payload is a stream of Bytes objects
-    let mut body = web::BytesMut::new();
-    while let Some(chunk) = payload.next().await {
-        //TODO remove unwrap
-        let chunk = chunk.unwrap();
-        // limit max size of in-memory payload
-        if (body.len() + chunk.len()) > MAX_SIZE {
-            return Err(ServiceError::BadRequest("overflow".to_string()));
-        }
-        body.extend_from_slice(&chunk);
-    }
-
-    // body is loaded, now we can deserialize serde-json
-    let obj = serde_json::from_slice::<SendMessageRequestBody>(&body)?;
-
-    debug!("test_post method called! {:?}", obj);
+    debug!("test_post function is called with {:?}", &body);
     Ok(web::Json(SendMessageResponseBody {
         ordinal_number: 32,
-        text: obj.text,
+        text: body.text.clone(),
     }))
 }
 
@@ -137,24 +120,16 @@ pub async fn get_user(
 //   }'
 // ```
 pub async fn test_login(
-    mut payload: Payload,
+    //mut payload: Payload,
+    user_permissions: web::Json<UserPermissions>,
 ) -> Result<web::Json<UserPermissionsResponse>, ServiceError> {
-    //) -> Result<String, ServiceError> {
     debug!("test_login function called");
-    let mut body = web::BytesMut::new();
-    while let Some(chunk) = payload.next().await {
-        //TODO remove unwrap
-        let chunk = chunk.unwrap();
-        // limit max size of in-memory payload
-        if (body.len() + chunk.len()) > MAX_SIZE {
-            return Err(ServiceError::BadRequest("overflow".to_string()));
-        }
-        body.extend_from_slice(&chunk);
-    }
-
-    // body is loaded, now we can deserialize serde-json
-    let pay = serde_json::from_slice::<UserPermissions>(&body)?;
-    let token_str = match create_token(pay.username.clone(), pay.permissions.clone()).await {
+    let token_str = match create_token(
+        user_permissions.username.clone(),
+        user_permissions.permissions.clone(),
+    )
+    .await
+    {
         Ok(t) => t,
         Err(_) => {
             return Err(ServiceError::InternalServerError(
@@ -164,8 +139,8 @@ pub async fn test_login(
     };
 
     let response = UserPermissionsResponse {
-        username: pay.username,
-        permissions: pay.permissions,
+        username: user_permissions.username.clone(),
+        permissions: user_permissions.permissions.clone(),
         token: token_str.clone(),
     };
     Ok(web::Json(response))
