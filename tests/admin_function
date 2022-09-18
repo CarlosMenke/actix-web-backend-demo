@@ -9,4 +9,4 @@ TOKEN=$(curl --location --request POST 'http://127.0.0.1:8084/test/login.json' \
 
 echo $TOKEN
 
-curl --location --request GET 'http://127.0.0.1:8084/test/auth/admin.json' --header "Authorization: Bearer $TOKEN"
+echo $(curl --location --request GET 'http://127.0.0.1:8084/test/auth/admin.json' --header "Authorization: Bearer $TOKEN")
