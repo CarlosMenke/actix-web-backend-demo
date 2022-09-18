@@ -80,7 +80,7 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         web::scope("/auth")
                             .wrap(auth)
-                            .route("admin", web::get().to(tests::test_admin_page)),
+                            .route("admin.json", web::get().to(tests::test_admin_page)),
                     ),
             )
     })
